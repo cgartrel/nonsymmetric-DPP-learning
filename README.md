@@ -1,5 +1,5 @@
 # Nonsymmetric DPP Learning
-Pytorch implementation of nonsymmetric determinantal point process (DPP) learning.  For 
+PyTorch implementation of nonsymmetric determinantal point process (DPP) learning.  For 
 details, see our [Learning Nonsymmetric Determinantal Point Processes](https://arxiv.org/abs/1905.12962)
 paper.
 
