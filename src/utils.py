@@ -93,7 +93,17 @@ class LogLikelihood(object):
 
         # Compute denominator of nonsymmetric low-rank DPP likelihood (normalization constant)
         # Symmetric component
-        L = V.mm(V.transpose(0, 1))
+        if model.disable_nonsym_embeddings:
+            # Use dual form of L when nonsymmetric component is disabled
+            L_dual = V.transpose(0, 1).mm(V)
+            L = L_dual
+
+            num_sym_embedding_dims = L_dual.size(0)
+            identity = torch.eye(num_sym_embedding_dims).to(model.device)
+        else:
+            L = V.mm(V.transpose(0, 1))
+            num_catalog_items = L.size(0)
+            identity = torch.eye(num_catalog_items).to(model.device)
 
         if not model.disable_nonsym_embeddings:
             # Nonsymmetric component
@@ -104,8 +114,6 @@ class LogLikelihood(object):
         if batchnorm:
             second_term = 0
         else:
-            num_catalog_items = L.size(0)
-            identity = torch.eye(num_catalog_items).to(model.device)
             # Add (1 + epsilon) * identity to improve numerical stability
             if model.disable_nonsym_embeddings:
                 logpartition = torch.slogdet(L + (1 + epsilon) * identity)[1]
