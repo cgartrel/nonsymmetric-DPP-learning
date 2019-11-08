@@ -114,11 +114,10 @@ class LogLikelihood(object):
         if batchnorm:
             second_term = 0
         else:
-            # Add (1 + epsilon) * identity to improve numerical stability
             if model.disable_nonsym_embeddings:
-                logpartition = torch.slogdet(L + (1 + epsilon) * identity)[1]
+                logpartition = torch.slogdet(L + identity)[1]
             else:
-                logpartition = torch.slogdet(L + nonsymm + (1 + epsilon) * identity)[1]
+                logpartition = torch.slogdet(L + nonsymm + identity)[1]
             second_term = logpartition.to(model.device)
 
         # L2-style regularization
