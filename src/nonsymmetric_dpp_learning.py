@@ -133,6 +133,9 @@ def _compute_prediction_metrics_for_bootstrap(
     for name, values in scores.items():
         aux[name] = {}
         for bucket, bucket_values in values.items():
+            if len(bucket_values) == 0:
+                continue
+
             if name == "AUC":
                 pos_pred_logliks, random_logliks = zip(*bucket_values)
                 agg = get_auc_from_logliks(pos_pred_logliks,
