@@ -19,6 +19,54 @@ class NonSymmetricDPPSampler(object):
         self.num_threads = num_threads
         self.device = device
 
+    # Generates samples using the Cholesky-based DPP sampling algorithm
+    # described at
+    # https://dppy.readthedocs.io/en/latest/finite_dpps/exact_sampling.html#finite-dpps-exact-sampling-cholesky-method
+    # Works for both symmetric and nonsymmetric DPPs.
+    def generate_samples(self, num_samples, dpp=None, V=None, B=None, C=None, L=None):
+        samples = []
+
+        if L is None:
+            if dpp.disable_nonsym_embeddings and V is None:
+                V = dpp.forward(dpp.all_items_in_catalog_set_var)
+            elif V is None and B is None and C is None:
+                V, B, C = dpp.forward(dpp.all_items_in_catalog_set_var)
+
+            # Symmetric component of kernel
+            L = V.mm(V.transpose(0, 1))
+
+            # Nonsymmetric component of kernel
+            if not dpp.disable_nonsym_embeddings:
+                nonsymm = B.mm(C.transpose(0, 1)) - C.mm(B.transpose(0, 1))
+                kernel = L + nonsymm
+            else:
+                kernel = L
+        else:
+            kernel = L
+
+        num_items_in_catalog = kernel.size()[0]
+
+        # Convert kernel to marginal kernel (K)
+        eye = torch.eye(num_items_in_catalog)
+        K = eye - (kernel + eye).inverse()
+
+        for i in range(num_samples):
+            K_copy = K.clone().detach()
+            sample = []
+
+            for j in range(num_items_in_catalog):
+                if torch.rand(1) < K_copy[j, j]:
+                    sample.append(j)
+                else:
+                    K_copy[j, j] -= 1
+
+                K_copy[j + 1:, j] /= K_copy[j, j]
+                K_copy[j + 1:, j + 1:] -= torch.ger(K_copy[j + 1:, j], K_copy[j, j + 1:])
+
+            samples.append(sample)
+
+        return samples
+
     def condition_dpp_on_items_observed(self, model, items_observed,
                                              V=None, B=None, C=None):
         """
