@@ -66,14 +66,10 @@ class NonSymmetricDPP(NonSymmetricDPPPrediction):
             logging.info("num_nonsym_embedding_dims = 0; disabling non-symmetric components")
             self.disable_nonsym_embeddings = True
         else:
-            self.get_b_embeddings = ProductCatalogEmbedder(
-                self.product_catalog, self.features_setup, self.num_nonsym_embedding_dims,
-                activation=self.activation, hidden_dims=self.hidden_dims,
-                dropout=self.dropout)
-            self.get_c_embeddings = ProductCatalogEmbedder(
-                self.product_catalog, self.features_setup, self.num_nonsym_embedding_dims,
-                activation=self.activation, hidden_dims=self.hidden_dims,
-                dropout=self.dropout)
+            self.get_b_embeddings = self.get_v_embeddings
+            self.d_params = torch.randn(
+                self.num_nonsym_embedding_dims,
+                self.num_nonsym_embedding_dims, requires_grad=True)
 
         # prepare L2 regularizer
         self.reg = L2Regularization().regularization
@@ -109,7 +105,7 @@ class NonSymmetricDPP(NonSymmetricDPPPrediction):
         if self.disable_nonsym_embeddings:
             return self.get_v_embeddings()
         else:
-            return self.get_v_embeddings(), self.get_b_embeddings(), self.get_c_embeddings()
+            return self.get_v_embeddings(), self.get_b_embeddings()
 
     def forward(self, _):
         """
@@ -118,16 +114,14 @@ class NonSymmetricDPP(NonSymmetricDPPPrediction):
         if self.disable_nonsym_embeddings:
             return self.get_v_embeddings()
         else:
-            return self.get_v_embeddings(), self.get_b_embeddings(), self.get_c_embeddings()
+            return self.get_v_embeddings(), self.get_b_embeddings(), self.d_params
 
     @staticmethod
     def compute_log_likelihood(model, baskets, alpha_regularization=0.,
                                beta_regularization=0.,
-                               gamma_regularization=0.,
                                reduce=True, checks=False, mapped=True):
         return compute_log_likelihood(model, baskets, alpha_regularization=alpha_regularization,
                            beta_regularization=beta_regularization,
-                           gamma_regularization=gamma_regularization,
                            reduce=reduce, checks=checks, mapped=mapped)
 
     def get_tsne_embeddings(self, n_components=2, **kwargs):
@@ -187,7 +181,6 @@ class Args(object):
         self.lr = self._infer_learning_rate(self.args, self.hidden_dims)
         self.alpha = self._compute_alpha(self.args, self.hidden_dims)
         self.beta = self._compute_beta(self.args, self.hidden_dims)
-        self.gamma = self._compute_gamma(self.args, self.hidden_dims)
         self.disable_eval = self.args_dict.pop("disable_eval")
         self.inference = self.args_dict.pop("inference")
         self.num_bootstraps = self.args_dict.pop("num_bootstraps")
@@ -254,18 +247,6 @@ class Args(object):
                 beta = 0.
             logging.info(".....beta: %g" % beta)
         return beta
-
-    @staticmethod
-    def _compute_gamma(args, hidden_dims):
-        # it's important that the shallow model penalized embeddings
-        gamma = args.gamma
-        if gamma is None:
-            if len(hidden_dims) == 0:
-                gamma = 1.
-            else:
-                gamma = 0.
-            logging.info(".....gamma: %g" % gamma)
-        return gamma
 
 class Dataset(object):
     def __init__(self, args, seed, rng, num_val_baskets, num_test_baskets):
@@ -464,7 +445,6 @@ class Experiment(object):
                                   "num_iterations": args.num_iterations,
                                   "alpha_train": arguments.alpha,
                                   "beta_train": arguments.beta,
-                                  "gamma_train": arguments.gamma,
                                   "disable_eval": arguments.disable_eval,
                                   "inference": arguments.inference,
                                   "learning_rate": arguments.lr,

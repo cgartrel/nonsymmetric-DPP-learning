@@ -49,7 +49,8 @@ class NonSymmetricDPPPrediction(nn.Module):
             if self.disable_nonsym_embeddings:
                 V = self.forward(self.all_items_in_catalog_set_var)
             else:
-                V, B, C = self.forward(self.all_items_in_catalog_set_var)
+                V, B, D = self.forward(self.all_items_in_catalog_set_var)
+                C = D - D.transpose(0, 1)
         for i, basket in tqdm(enumerate(test_data)):
             if len(basket) > 1:
                 yield self.get_basket_completion(basket, V=V, B=B, C=C)

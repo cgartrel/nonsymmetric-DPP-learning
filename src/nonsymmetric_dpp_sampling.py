@@ -30,14 +30,15 @@ class NonSymmetricDPPSampler(object):
             if dpp.disable_nonsym_embeddings and V is None:
                 V = dpp.forward(dpp.all_items_in_catalog_set_var)
             elif V is None and B is None and C is None:
-                V, B, C = dpp.forward(dpp.all_items_in_catalog_set_var)
+                V, B, D = dpp.forward(dpp.all_items_in_catalog_set_var)
 
             # Symmetric component of kernel
             L = V.mm(V.transpose(0, 1))
 
             # Nonsymmetric component of kernel
             if not dpp.disable_nonsym_embeddings:
-                nonsymm = B.mm(C.transpose(0, 1)) - C.mm(B.transpose(0, 1))
+                C = D - D.transpose(0, 1)
+                nonsymm = B.mm(C).mm(B.transpose(0, 1))
                 kernel = L + nonsymm
             else:
                 kernel = L
@@ -78,17 +79,17 @@ class NonSymmetricDPPSampler(object):
                 V = model.forward(model.all_items_in_catalog_set_var)
                 V = V.to(self.device)
             else:
-                V, B, C = model.forward(model.all_items_in_catalog_set_var)
+                V, B, D = model.forward(model.all_items_in_catalog_set_var)
                 V = V.to(self.device)
                 B = B.to(self.device)
-                C = C.to(self.device)
+                C = D - D.transpose(0, 1)
 
         # Symmetric component of kernel
         L = V.mm(V.transpose(0, 1))
 
         # Nonsymmetric component of kernel
         if not model.disable_nonsym_embeddings:
-            nonsymm = B.mm(C.transpose(0, 1)) - C.mm(B.transpose(0, 1))
+            nonsymm = B.mm(C).mm(B.transpose(0, 1))
             kernel = L + nonsymm
         else:
             kernel = L

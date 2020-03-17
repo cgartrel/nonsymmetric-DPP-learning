@@ -30,10 +30,9 @@ class L2Regularization(torch.autograd.Function):
     Forward pass for the nonsymmetric low-rank DPP regularization terms.
     """
     @staticmethod
-    def regularization(V, B, C, lambda_vec, alpha, beta, gamma):
+    def regularization(V, B, C, lambda_vec, alpha, beta):
         V_regularization_term = 0
         B_regularization_term = 0
-        C_regularization_term = 0
 
         if alpha != 0:
             V_norm = torch.norm(V, p=2, dim=1)
@@ -41,13 +40,11 @@ class L2Regularization(torch.autograd.Function):
 
         # Compute B and C regularization terms, if these components are enabled
         if B is not None and C is not None:
-            if beta != 0 or gamma != 0:
+            if beta != 0:
                 B_norm = torch.norm(B, p=2, dim=1)
-                C_norm = torch.norm(C, p=2, dim=1)
                 B_regularization_term = beta / 2.0 * lambda_vec.matmul(torch.pow(B_norm, 2))
-                C_regularization_term = gamma / 2.0 * lambda_vec.matmul(torch.pow(C_norm, 2))
 
-        return V_regularization_term - B_regularization_term - C_regularization_term
+        return V_regularization_term - B_regularization_term
 
 class NonSymmetricDPP(NonSymmetricDPPPrediction):
     def __init__(self, num_threads=1):
@@ -57,13 +54,11 @@ class NonSymmetricDPP(NonSymmetricDPPPrediction):
 # @profile
 def compute_log_likelihood(model, baskets, alpha_regularization=0.,
                            beta_regularization=0.,
-                           gamma_regularization=0.,
                            reduce=True, checks=False, mapped=True):
     return LogLikelihood.compute_log_likelihood(model,
                                                 baskets,
                                                 alpha_regularization=alpha_regularization,
                                                 beta_regularization=beta_regularization,
-                                                gamma_regularization=gamma_regularization,
                                                 reduce=reduce,
                                                 checks=checks,
                                                 mapped=mapped)
@@ -304,7 +299,6 @@ def _do_learning(args):
     alpha_train = args.get("alpha_train", .1)
     alpha_val = args.get("alpha_val", 0.)
     beta_train = args.get("beta_train", .1)
-    gamma_train = args.get("gamma_train", .1)
     proc = args.get("proc", 0)
     train_data = args["train_data"]
     train_dataset = args.get("train_dataset", None)
@@ -382,8 +376,7 @@ def _do_learning(args):
             minibatch_log_likelihood = model.compute_log_likelihood(
                 model, minibatch_baskets, mapped=False,
                 alpha_regularization=alpha_train,
-                beta_regularization=beta_train,
-                gamma_regularization=gamma_train)
+                beta_regularization=beta_train)
 
             # Compute gradient and update parameters
             (-minibatch_log_likelihood).backward()
@@ -393,7 +386,7 @@ def _do_learning(args):
             if val_data is not None:
                 avg_val_log_likelihood = model.compute_log_likelihood(
                     model, val_data, mapped=False, alpha_regularization=0,
-                    beta_regularization=0, gamma_regularization=0).item()
+                    beta_regularization=0).item()
 
                 loglik_history.append(avg_val_log_likelihood)
                 logging.info("%sAvg loglik for val at iteration %s: %g" % (

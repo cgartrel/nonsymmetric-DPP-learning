@@ -39,7 +39,6 @@ class LogLikelihood(object):
     @staticmethod
     def compute_log_likelihood(model, baskets, alpha_regularization=0.,
                                beta_regularization=0.,
-                               gamma_regularization=0.,
                                reduce=True, checks=False, mapped=True):
         """
         Computes nonsymmetric low-rank DPP log-likelihood
@@ -53,83 +52,49 @@ class LogLikelihood(object):
         if model.disable_nonsym_embeddings:
             V = model.forward(model.all_items_in_catalog_set_var)
         else:
-            V, B, C = model.forward(model.all_items_in_catalog_set_var)
-
-        # get embeddings for each basket
-        V_embeddings = [V[basket] for basket in baskets]
-
-        if not model.disable_nonsym_embeddings:
-            B_embeddings = [B[basket] for basket in baskets]
-            C_embeddings = [C[basket] for basket in baskets]
+            V, B, D = model.forward(model.all_items_in_catalog_set_var)
+            C = D - D.transpose(0, 1)
 
         # Compute first term (numerator) of nonsymmetric low-rank DPP likelihood
-        if reduce:
-            first_term = 0
-        else:
-            first_term = torch.zeros(num_baskets).to(model.device)
-
-        for i, V_i in enumerate(V_embeddings):
-            # Symmetric component
-            L_i_symm = V_i.mm(V_i.transpose(0, 1))
-
-            # Nonsymmetric components
-            if not model.disable_nonsym_embeddings:
-                B_i = B_embeddings[i]
-                C_i = C_embeddings[i]
-                nonsymm_i = B_i.mm(C_i.transpose(0, 1)) - C_i.mm(B_i.transpose(0, 1))
-
-            # Add epsilon * I to improve numerical stability
-            eye_L_i = torch.eye(L_i_symm.size()[0]).to(model.device)
-            if model.disable_nonsym_embeddings:
-                tmp = torch.slogdet(L_i_symm + epsilon * eye_L_i)[1]
-            else:
-                tmp = torch.slogdet(L_i_symm + epsilon * eye_L_i + nonsymm_i)[1]
-
-            tmp = tmp.to(model.device)
-            if reduce:
-                first_term += tmp
-            else:
-                first_term[i] = tmp
+        first_term = LogLikelihood.compute_log_likelihood_baskets(
+                model, baskets, V=V, B=B, C=C, reduce=reduce)
 
         # Compute denominator of nonsymmetric low-rank DPP likelihood (normalization constant)
         # Symmetric component
-        if model.disable_nonsym_embeddings:
-            # Use dual form of L when nonsymmetric component is disabled
-            L_dual = V.transpose(0, 1).mm(V)
-            L = L_dual
+        # Use dual form of L for the symmetric component of the normalizer
+        V_transpose = V.transpose(0, 1)
+        L_dual = V_transpose.mm(V)
 
-            num_sym_embedding_dims = L_dual.size(0)
-            identity = torch.eye(num_sym_embedding_dims).to(model.device)
-        else:
-            L = V.mm(V.transpose(0, 1))
-            num_catalog_items = L.size(0)
-            identity = torch.eye(num_catalog_items).to(model.device)
+        num_sym_embedding_dims = L_dual.size(0)
+        identity_num_sym_embedding_dims = torch.eye(num_sym_embedding_dims).to(model.device)
+
+        logpartition = torch.slogdet(L_dual + identity_num_sym_embedding_dims)[1]
 
         if not model.disable_nonsym_embeddings:
-            # Nonsymmetric component
-            nonsymm = B.mm(C.transpose(0, 1)) - C.mm(B.transpose(0, 1))
+            # Use Woodbury formula and matrix determinant lemma to efficiently compute nonsymmetric
+            # components of normalizer
+            B_transpose = B.transpose(0, 1)
+
+            logpartition = logpartition + torch.slogdet(C)[1]
+            logpartition = logpartition + torch.slogdet(
+                torch.inverse(C) + B_transpose.mm(B) - B_transpose.mm(V).mm(torch.inverse(
+                    identity_num_sym_embedding_dims + L_dual)).mm(V_transpose).mm(B))[1]
 
         # don't forget smooth the normalization term too (lest DPP is no longer
         # a probability density)
         if batchnorm:
             second_term = 0
         else:
-            if model.disable_nonsym_embeddings:
-                logpartition = torch.slogdet(L + identity)[1]
-            else:
-                logpartition = torch.slogdet(L + nonsymm + identity)[1]
             second_term = logpartition.to(model.device)
 
         # L2-style regularization
         third_term = None
         if alpha_regularization != 0 or \
-                beta_regularization != 0 or \
-                gamma_regularization != 0:
+                beta_regularization != 0:
             third_term = model.reg(
                 V, B, C, model.lambda_vec,
                 torch.Tensor([alpha_regularization]),
-                torch.Tensor([beta_regularization]),
-                torch.Tensor([gamma_regularization]))
+                torch.Tensor([beta_regularization]))
         else:
             third_term = 0.
 
@@ -147,6 +112,48 @@ class LogLikelihood(object):
                 assert logliks <= 0
 
         return logliks
+
+    # Compute the log-likelihood term for a collection of baskets (first term
+    # of DPP log-likelihood).
+    @staticmethod
+    def compute_log_likelihood_baskets(model, baskets, V, B=None, C=None, reduce=True):
+        num_baskets = len(baskets)
+
+        # Get embeddings for each basket
+        V_embeddings = [V[basket] for basket in baskets]
+
+        if not model.disable_nonsym_embeddings:
+            B_embeddings = [B[basket] for basket in baskets]
+
+        # Compute first term (numerator) of nonsymmetric low-rank DPP likelihood
+        if reduce:
+            first_term = 0
+        else:
+            first_term = torch.zeros(num_baskets).to(model.device)
+
+        for i, V_i in enumerate(V_embeddings):
+            # Symmetric component
+            L_i_symm = V_i.mm(V_i.transpose(0, 1))
+
+            # Nonsymmetric components
+            if not model.disable_nonsym_embeddings:
+                B_i = B_embeddings[i]
+                nonsymm_i = B_i.mm(C).mm(B_i.transpose(0, 1))
+
+            # Add epsilon * I to improve numerical stability
+            eye_L_i = torch.eye(L_i_symm.size()[0]).to(model.device)
+            if model.disable_nonsym_embeddings:
+                tmp = torch.slogdet(L_i_symm + epsilon * eye_L_i)[1]
+            else:
+                tmp = torch.slogdet(L_i_symm + epsilon * eye_L_i + nonsymm_i)[1]
+
+            tmp = tmp.to(model.device)
+            if reduce:
+                first_term += tmp
+            else:
+                first_term[i] = tmp
+
+        return first_term
 
 
 class VocabularyMapper(object):
@@ -277,8 +284,6 @@ def parse_cmdline_args():
     parser.add_argument('--alpha', type=float, default=0.1,
                         help='L2 regularization parameter for symmetric component')
     parser.add_argument('--beta', type=float, default=0.0,
-                        help='L2 regularization parameter for nonsymmetric component')
-    parser.add_argument('--gamma', type=float, default=0.0,
                         help='L2 regularization parameter for nonsymmetric component')
     parser.add_argument(
         '--use_metadata', type=str2bool, default="false",
