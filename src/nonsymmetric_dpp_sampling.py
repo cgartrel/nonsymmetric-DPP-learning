@@ -126,6 +126,75 @@ class NonSymmetricDPPSampler(object):
         return kernel_conditioned_on_items_observed, \
                item_ids_to_K_conditioned_on_items_observed_row_col_indices
 
+    # Conditions a DPP using greedy conditioning.  Returns conditional
+    # marginal probabilities for items in ground set not found in items_observed.
+    def condition_dpp_on_items_observed_greedy(self, model, items_observed, V=None, B=None, C=None):
+        all_items_in_catalog_set = model.all_items_in_catalog_set
+        if V is None and B is None and C is None:
+            if model.disable_nonsym_embeddings:
+                V = model.forward(model.all_items_in_catalog_set_var)
+                V = V.to(self.device)
+            else:
+                V, _, D = model.forward(model.all_items_in_catalog_set_var)
+                V = V.to(self.device)
+                C = D - D.transpose(0, 1)
+
+        if model.disable_nonsym_embeddings:
+            P = V
+        else:
+            P = V.matmul(torch.eye(C.size(0)) + C)
+
+        items_observed_set = set(items_observed)
+        all_items_not_in_observed = list(all_items_in_catalog_set - items_observed_set)
+
+        Q = V
+        num_items_in_catalog = len(all_items_in_catalog_set)
+        num_items_observed = len(items_observed)
+
+        marginal_gain = P.mul(Q).sum(1)
+        observed_item = items_observed[0]
+        C1 = torch.zeros(num_items_in_catalog, num_items_observed)
+        C2 = torch.zeros(num_items_in_catalog, num_items_observed)
+        for i in range(1, num_items_observed + 1):
+            e1 = torch.matmul(Q, P[observed_item, :].reshape(-1, 1)).reshape(-1)
+            e2 = torch.matmul(P, Q[observed_item, :].reshape(-1, 1)).reshape(-1)
+            if i > 1:
+                e1 -= torch.matmul(C1[:, :i - 1], C2[observed_item, :i - 1])
+                e2 -= torch.matmul(C2[:, :i - 1], C1[observed_item, :i - 1])
+            e1 /= marginal_gain[observed_item]
+            C1[:, i - 1] = e1
+            C2[:, i - 1] = e2
+
+            marginal_gain -= e1.mul(e2).reshape(-1)
+            if i >= num_items_observed:
+                break
+            observed_item = items_observed[i]
+        conditional_prob = marginal_gain[all_items_not_in_observed]
+        return conditional_prob
+
+    # Computes the unnormalized probabilities of observing each item in next_items, given the nonsymmetric low-rank DPP
+    # with the specified embedding matrices, and a set of observed items.  Greedy conditioning is used to compute these
+    # probabilities.
+    def compute_next_item_probs_conditional_greedy(
+            self, model, items_observed, next_items,
+            return_next_item_probs_as_dict=True, V=None, B=None, C=None):
+
+        next_item_probs_vec = self.condition_dpp_on_items_observed_greedy(
+            model, items_observed, V=V, B=B, C=C)
+
+        if return_next_item_probs_as_dict:
+            next_item_probs = dict.fromkeys(next_items)
+            next_item_probs_vec_index = 0
+            for next_item_id in next_items:
+                next_item_probs[next_item_id] = \
+                    next_item_probs_vec[next_item_probs_vec_index]
+
+                next_item_probs_vec_index += 1
+
+            return next_item_probs
+        else:
+            return next_item_probs_vec
+
     # Computes the unnormalized probabilities of observing each item in next_items, given the nonsymmetric low-rank DPP
     # with the specified embedding matrices, and a set of observed items.  A conditional k-DPP is used to compute these
     # probabilities.

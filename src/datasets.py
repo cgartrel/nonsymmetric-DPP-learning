@@ -353,6 +353,7 @@ def load_dataset(dataset_name, **kwargs):
     """
     logging.info("Loading %s dataset" % dataset_name)
     if dataset_name.lower() == "instacart":
+        del kwargs['input_file']
         return load_instacart_dataset(data_dir=Header+"data/instacart_2017_05_01",**kwargs)
     elif dataset_name.lower() == "uk":
         kwargs["input_file"] = Header + "data/UK-retail-joined.csv"

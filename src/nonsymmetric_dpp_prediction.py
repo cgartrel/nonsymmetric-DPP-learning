@@ -37,10 +37,12 @@ class NonSymmetricDPPPrediction(nn.Module):
     def get_basket_completion(self, basket, V=None, B=None, C=None):
         basket = copy.copy(basket)
         last = basket.pop()
-        output_dict_prob = self.dpp_sampler.compute_next_item_probs_conditional_kdpp(
+
+        output_dict_prob_greedy = self.dpp_sampler.compute_next_item_probs_conditional_greedy(
             self, basket, set(range(self.item_catalog_size)) - set(basket),
             V=V, B=B, C=C)
-        pred = np.array([0. if item in basket else output_dict_prob[item]
+
+        pred = np.array([0. if item in basket else output_dict_prob_greedy[item]
                          for item in range(self.item_catalog_size)])
         return pred, last, basket
 
