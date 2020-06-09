@@ -310,7 +310,7 @@ def parse_cmdline_args():
     dataset_parser = parser.add_argument_group("dataset specification options")
     dataset_parser.add_argument(
         '--dataset_name', type=str,
-        default="basket_ids", help='Name of the dataset to use.  Currently either "basket_ids" or "uk" is supported.')
+        default="basket_ids", help='Name of the dataset to use.  Currently either "basket_ids", "uk", or "instacart" is supported.')
 
     model_parser = parser.add_argument_group("model / optimizer options")
     model_parser.add_argument('--hidden_dims', type=str2loi, default="",
