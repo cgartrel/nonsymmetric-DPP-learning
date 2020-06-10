@@ -180,7 +180,8 @@ class Args(object):
         self.hidden_dims = self._compute_hidden_dims(self.args)
         self.lr = self._infer_learning_rate(self.args, self.hidden_dims)
         self.alpha = self._compute_alpha(self.args, self.hidden_dims)
-        self.beta = self._compute_beta(self.args, self.hidden_dims)
+        # self.beta = self._compute_beta(self.args, self.hidden_dims)
+        self.beta = 0 # Beta regularization hyperparam is currently not used
         self.disable_eval = self.args_dict.pop("disable_eval")
         self.inference = self.args_dict.pop("inference")
         self.num_bootstraps = self.args_dict.pop("num_bootstraps")

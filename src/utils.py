@@ -283,8 +283,8 @@ def parse_cmdline_args():
         help='maximum size of the baskets to use in experiment')
     parser.add_argument('--alpha', type=float, default=0.1,
                         help='L2 regularization parameter for symmetric component')
-    parser.add_argument('--beta', type=float, default=0.0,
-                        help='L2 regularization parameter for nonsymmetric component')
+    # parser.add_argument('--beta', type=float, default=0.0,
+    #                     help='L2 regularization parameter for nonsymmetric component')
     parser.add_argument(
         '--use_metadata', type=str2bool, default="false",
         help='whether to use product meta-data to enrich embeddings')
@@ -320,7 +320,7 @@ def parse_cmdline_args():
         '--num_sym_embedding_dims', type=int, default=30,
         help='number of final embedding dims for symmetric kernel component to use')
     model_parser.add_argument(
-        '--num_nonsym_embedding_dims', type=int, default=100,
+        '--num_nonsym_embedding_dims', type=int, default=30,
         help='number of final embedding dims for nonsymmetric kernel component to use')
     model_parser.add_argument(
         '--product_id_embedding_dim', type=int, default=30,
