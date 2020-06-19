@@ -1,5 +1,5 @@
 """
-Author: Elvis Dohmatob <gmdopp@gmail.com>
+
 """
 import typing
 import numpy as np

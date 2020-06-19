@@ -1,7 +1,6 @@
 """
-Synopsis: Refactored deep DPP code logic
-Author: Mike Gartrell,
-        Elvis Dohmatob <gmdopp@gmail.com>
+Synopsis: Refactored nonsymmetric DPP code logic
+
 """
 import os
 import random
@@ -103,18 +102,21 @@ class NonSymmetricDPP(NonSymmetricDPPPrediction):
         XXX For backward compat
         """
         if self.disable_nonsym_embeddings:
-            return self.get_v_embeddings()
+            return self.get_v_embeddings().to(self.device)
         else:
-            return self.get_v_embeddings(), self.get_b_embeddings()
+            return self.get_v_embeddings().to(self.device), \
+                   self.get_b_embeddings().to(self.device)
 
     def forward(self, _):
         """
         XXX For backward compat
         """
         if self.disable_nonsym_embeddings:
-            return self.get_v_embeddings()
+            return self.get_v_embeddings().to(self.device)
         else:
-            return self.get_v_embeddings(), self.get_b_embeddings(), self.d_params
+            return self.get_v_embeddings().to(self.device), \
+                   self.get_b_embeddings().to(self.device), \
+                   self.d_params.to(self.device)
 
     @staticmethod
     def compute_log_likelihood(model, baskets, alpha_regularization=0.,

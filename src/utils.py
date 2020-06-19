@@ -93,8 +93,8 @@ class LogLikelihood(object):
                 beta_regularization != 0:
             third_term = model.reg(
                 V, B, C, model.lambda_vec,
-                torch.Tensor([alpha_regularization]),
-                torch.Tensor([beta_regularization]))
+                torch.Tensor([alpha_regularization]).to(model.device),
+                torch.Tensor([beta_regularization]).to(model.device))
         else:
             third_term = 0.
 
@@ -252,7 +252,7 @@ def parse_cmdline_args():
                         default="nonsymmetric-DPP-eval-scores",
                         help="pickle file where inference scores will be written (pandas dataframe format)")
     parser.add_argument(
-        '--num_bootstraps', type=int, default=1,
+        '--num_bootstraps', type=int, default=20,
         help='number of bootstraps for evaluation scores')
     parser.add_argument("--disable_eval", type=str2bool, default="true",
                         help="disable model evaluation during training")

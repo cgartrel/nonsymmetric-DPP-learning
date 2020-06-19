@@ -1,7 +1,5 @@
 """
 Synopsis: Dataset fetchers
-Author: Mike Gartrell,
-        Elvis Dohmatob <gmdopp@gmail.com>
 """
 import typing
 
