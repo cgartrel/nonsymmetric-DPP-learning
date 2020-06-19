@@ -24,7 +24,7 @@ $ python main.py --dataset_name uk --num_sym_embedding_dims 100 --num_nonsym_emb
 
 To train and evaluate a scalable NDPP using the Instacart dataset, first download the Instacart dataset 
 from https://www.instacart.com/datasets/grocery-shopping-2017 and unpack it in the 
-`data/instacart_2017_05_01` directory.  Then run:
+`data/instacart_2017_05_01` directory.  Next, unzip the `data/instacart_2017_05_01/meta_catalog.csv.zip` file.  Then run:
 ```console
 $ python main.py --dataset_name instacart --num_sym_embedding_dims 100 --num_nonsym_embedding_dims 100 --alpha 0.01 --max_basket_size 100 --batch_size 400
 ```
