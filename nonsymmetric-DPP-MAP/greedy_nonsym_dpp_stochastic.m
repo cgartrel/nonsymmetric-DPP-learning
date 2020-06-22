@@ -1,4 +1,4 @@
-function chosen_set = greedy_stochastic_nonsym_dpp(B, C, num_to_choose, num_samples)
+function chosen_set = greedy_nonsym_dpp_stochastic(B, C, num_to_choose, num_samples)
 % The stochastic greedy MAP inference algorithm for nonsymmetric DPP. 
 % See Mirzasoleiman, Baharan, et al. "Lazier than lazy greedy." AAAI 2015.
 %
@@ -34,7 +34,7 @@ end
 marginal_gain = sum(B .* (B * C'), 2);
     
 % Find an item that maximizes the marginal gain and add it to the output subset.
-[max_marginal_gain, item_argmax] = max(marginal_gain );
+[max_marginal_gain, item_argmax] = max(marginal_gain);
 chosen_set = item_argmax;
 
 % Initialize the matrices for updating the marginal gain.

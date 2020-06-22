@@ -19,13 +19,20 @@ To test the greedy algorithm, run:
 >> B = randn(M, K);
 >> C = randn(K, K);
 >> C = eye(K) + C - C';
->> Y = greedy_nonsym_dpp(B, C, k);
+>> Y = greedy_nonsym_dpp(B, C, num_to_choose);
 ```
 
 To test the stochastic greedy algorithm, run (continue to the above):
 
 ```console
 >> num_samples = 4;
->> Y_stoch = greedy_stochastic_nonsym_dpp(B, C, k, num_samples);
+>> Y_stoch = greedy_nonsym_dpp_stochastic(B, C, num_to_choose, num_samples);
+```
+
+To test the greedy local search algorithm, run:
+
+```console
+>> num_iterations = 10;
+>> Y_localsearch = greedy_nonsym_dpp_localsearch(B, C, num_to_choose, num_iterations);
 ```
 
