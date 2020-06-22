@@ -36,3 +36,9 @@ To test the greedy local search algorithm, run (continue to the above code):
 >> Y_localsearch = greedy_nonsym_dpp_localsearch(B, C, num_to_choose, num_iterations);
 ```
 
+To test the MCMC sampling, run (continue to the above code):
+
+```console
+>> num_iterations = 10;
+>> Y_mcmc = mcmc_sampling_nonsym_dpp(B, C, num_to_choose, num_iterations);
+```
