@@ -22,7 +22,7 @@ To test the greedy algorithm, run:
 >> Y = greedy_nonsym_dpp(B, C, k);
 ```
 
-To test the stochastic greedy algorith, run:
+To test the stochastic greedy algorithm, run (continue to the above):
 
 ```console
 >> num_samples = 4;
