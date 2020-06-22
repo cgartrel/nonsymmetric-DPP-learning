@@ -22,14 +22,14 @@ To test the greedy algorithm, run:
 >> Y = greedy_nonsym_dpp(B, C, num_to_choose);
 ```
 
-To test the stochastic greedy algorithm, run (continue to the above):
+To test the stochastic greedy algorithm, run (continue to the above code):
 
 ```console
 >> num_samples = 4;
 >> Y_stoch = greedy_nonsym_dpp_stochastic(B, C, num_to_choose, num_samples);
 ```
 
-To test the greedy local search algorithm, run:
+To test the greedy local search algorithm, run (continue to the above code):
 
 ```console
 >> num_iterations = 10;
