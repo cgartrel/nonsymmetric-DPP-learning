@@ -359,6 +359,8 @@ def parse_cmdline_args():
     if args.inference and args.scores_file is None:
         raise ValueError("no --scores_file specified with --inference")
 
+    args.product_id_embedding_dim = args.num_sym_embedding_dims
+
     args.scores_file = Header + args.scores_file
     args.persisted_model_dir = Header + args.persisted_model_dir
 
