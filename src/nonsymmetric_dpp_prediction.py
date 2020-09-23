@@ -63,7 +63,8 @@ class NonSymmetricDPPPrediction(nn.Module):
             for i in target:
                 assert i < self.item_catalog_size
         preds_sorted = [
-            1 - len(np.where(predictions[i] > predictions[i][int(targets[i])])[0]) / self.item_catalog_size for i in
+            1 - len(np.where(predictions[i] > predictions[i][int(targets[i])])[0]) / 
+            (self.item_catalog_size - sum(predictions[i] != 0.0)) for i in
             range(len(batch_inputs))]
 
         MPR_sorted = 100 * np.mean(np.array(preds_sorted))
@@ -81,12 +82,13 @@ class NonSymmetricDPPPrediction(nn.Module):
 
     def _get_pre_mpr(self, prediction, target):
         return 1 - len(np.where(
-            prediction >= float(prediction[int(target)]))[0]) / self.item_catalog_size
+            prediction >= float(prediction[int(target)]))[0]) / (self.item_catalog_size - sum(prediction != 0.0))
 
     def get_MPR_results_for_predictions(self, predictions, targets,
                                         batch_inputs):
         preds_sorted = [
-            1 - len(np.where(predictions[i] > predictions[i][int(targets[i])])[0]) / self.item_catalog_size for i in
+            1 - len(np.where(predictions[i] > predictions[i][int(targets[i])])[0]) 
+            / (self.item_catalog_size - sum(predictions[i] != 0.0)) for i in
             range(len(batch_inputs))]
 
         MPR_sorted = 100 * np.mean(np.array(preds_sorted))
