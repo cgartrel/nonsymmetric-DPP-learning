@@ -104,9 +104,17 @@ def _compute_prediction_metrics_for_bootstrap(
             scores["AUC"][bucket] = []
         scores["AUC"][bucket].append((pos, rand))
 
+    # compute V (, B, C) in prior
+    if model.disable_nonsym_embeddings:
+        V = model.forward(model.all_items_in_catalog_set_var)
+        B, C = None, None
+    else:
+        V, B, D = model.forward(model.all_items_in_catalog_set_var)
+        C = D - D.transpose(0, 1)
+
     # compute other metrics
     for prediction, target, basket in model.get_predictions(
-            test_data):
+            test_data, V=V, B=B, C=C):
         pre_mpr = model._get_pre_mpr(prediction, target)
         mpr.append(pre_mpr)
         top5 = model._get_top_k(5, prediction, target)

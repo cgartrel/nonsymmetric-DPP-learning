@@ -38,13 +38,12 @@ class NonSymmetricDPPPrediction(nn.Module):
         basket = copy.copy(basket)
         last = basket.pop()
 
-        output_dict_prob_greedy = self.dpp_sampler.compute_next_item_probs_conditional_greedy(
-            self, basket, set(range(self.item_catalog_size)) - set(basket),
-            V=V, B=B, C=C)
-
-        pred = np.array([0. if item in basket else output_dict_prob_greedy[item]
-                         for item in range(self.item_catalog_size)])
-        return pred, last, basket
+        next_items = np.setdiff1d(np.arange(self.item_catalog_size), basket)
+        next_item_probs_vec = self.dpp_sampler.condition_dpp_on_items_observed_greedy(
+            self, items_observed=basket, V=V, B=B, C=C).detach().cpu()
+        prediction = np.zeros(self.item_catalog_size)
+        prediction[next_items] = next_item_probs_vec
+        return prediction, last, basket
 
     def get_predictions(self, test_data, V=None, B=None, C=None):
         if V is None and B is None and C is None:
