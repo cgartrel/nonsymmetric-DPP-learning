@@ -227,8 +227,7 @@ class BasketDataset(torch.utils.data.Dataset):
         baskets = baskets.loc[np.logical_and(
             baskets["basket_size"] <= self.max_basket_size,
             baskets["basket_size"] >= self.min_basket_size)]
-        self.baskets = [np.unique(basket).tolist() 
-                        for basket in baskets['basket'].tolist()]
+        self.baskets = baskets["basket"].tolist()
         self.basket_ids = baskets["order_id"].tolist()
         self.negatives = self._compute_negatives()
         self.basket_sizes = baskets["basket_size"].tolist()
