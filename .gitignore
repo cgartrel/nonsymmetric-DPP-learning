@@ -108,3 +108,7 @@ saved_models
 
 # scores files
 *-DPP-eval-scores*
+
+# data
+__MACOSX
+meta*
