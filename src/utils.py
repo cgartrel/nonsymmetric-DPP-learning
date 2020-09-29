@@ -21,6 +21,7 @@ import numpy as np
 import pandas as pd
 
 import torch
+from torch.nn.utils.rnn import pad_sequence
 
 logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
 # control random-number generators
@@ -56,7 +57,7 @@ class LogLikelihood(object):
             C = D - D.transpose(0, 1)
 
         # Compute first term (numerator) of nonsymmetric low-rank DPP likelihood
-        first_term = LogLikelihood.compute_log_likelihood_baskets(
+        first_term = LogLikelihood.compute_log_likelihood_batches(
                 model, baskets, V=V, B=B, C=C, reduce=reduce)
 
         # Compute denominator of nonsymmetric low-rank DPP likelihood (normalization constant)
@@ -154,6 +155,44 @@ class LogLikelihood(object):
                 first_term[i] = tmp
 
         return first_term
+
+
+    # Compute the log-likelihood term for a collection of baskets (first term
+    # of DPP log-likelihood) with batch matrix-multiplication.
+    @staticmethod
+    def compute_log_likelihood_batches(model, baskets, V, B=None, C=None, reduce=True):
+        # Get embeddings for each basket
+        V_batch = pad_sequence([V[basket] for basket in baskets], batch_first=True)
+
+        # Define mask matrix for padding one in diagonals in L_V.
+        mask = ((V_batch !=  0).sum(dim=-1) > 0).detach()
+
+        # Batch matrix-multiplication of all baskets
+        if model.disable_nonsym_embeddings:
+            L_V = V_batch.bmm(V_batch.transpose(1, 2))
+        elif (V - B).norm() == 0.0: # Nonsymmetric DPP when B == V
+            C_plus_I = C + torch.eye(C.shape[0]).to(model.device)
+            # For bathc mm, matrix C should be expanded with batch size.
+            L_V = V_batch.bmm(
+                    C_plus_I.unsqueeze(0).expand(len(baskets), *C_plus_I.size())
+                ).bmm(V_batch.transpose(1,2))
+        else:
+            B_batch = pad_sequence([B[basket] for basket in baskets], batch_first=True)
+            L_V = V_batch.bmm(V_batch.transpose(1, 2)) + B_batch.bmm(
+                        C_plus_I.unsqueeze(0).expand(len(baskets), *C_plus_I.size())
+                    ).bmm(V_batch.transpose(1,2))
+
+        # Fill ones in the L(i,i) when entry i is padded. This can preserve the
+        # determinant value without degeneration.
+        max_num_items = V_batch.shape[1]
+        idx = torch.arange(max_num_items)
+        L_V[:,idx,idx] = (L_V[:,idx,idx] + epsilon)* mask + (~mask) * 1.0
+
+        first_term = torch.logdet(L_V)
+        if reduce:
+            return first_term.sum()
+        else:
+            return first_term
 
 
 class VocabularyMapper(object):
