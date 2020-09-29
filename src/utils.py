@@ -177,6 +177,7 @@ class LogLikelihood(object):
                     C_plus_I.unsqueeze(0).expand(len(baskets), *C_plus_I.size())
                 ).bmm(V_batch.transpose(1,2))
         else:
+            C_plus_I = C + torch.eye(C.shape[0]).to(model.device)
             B_batch = pad_sequence([B[basket] for basket in baskets], batch_first=True)
             L_V = V_batch.bmm(V_batch.transpose(1, 2)) + B_batch.bmm(
                         C_plus_I.unsqueeze(0).expand(len(baskets), *C_plus_I.size())
@@ -186,7 +187,7 @@ class LogLikelihood(object):
         # determinant value without degeneration.
         max_num_items = V_batch.shape[1]
         idx = torch.arange(max_num_items)
-        L_V[:,idx,idx] = (L_V[:,idx,idx] + epsilon)* mask + (~mask) * 1.0
+        L_V[:,idx,idx] = (L_V[:,idx,idx] + epsilon) * mask + (~mask) * 1.0
 
         first_term = torch.logdet(L_V)
         if reduce:

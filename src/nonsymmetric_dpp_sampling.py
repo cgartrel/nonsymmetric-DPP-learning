@@ -138,9 +138,7 @@ class NonSymmetricDPPSampler(object):
                 V, _, D = model.forward(model.all_items_in_catalog_set_var)
                 V = V.to(self.device)
                 C = D - D.transpose(0, 1)
-        V = V.to(self.device)
-        B = B.to(self.device)
-        C = C.to(self.device)
+                C = C.to(self.device)
 
         if model.disable_nonsym_embeddings:
             P = V
