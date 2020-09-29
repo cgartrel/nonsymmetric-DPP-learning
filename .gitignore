@@ -112,3 +112,5 @@ saved_models
 # data
 __MACOSX
 meta*
+
+test_*
