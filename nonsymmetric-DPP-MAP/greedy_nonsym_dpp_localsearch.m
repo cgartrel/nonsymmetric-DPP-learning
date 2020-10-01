@@ -39,7 +39,7 @@ end
 
 % Initialize the output subset by the greedy algorithm.
 Y = greedy_nonsym_dpp(B, C, num_to_choose);
-det_val = compute_det_submatrix(B, C, Y);
+det_val = compute_det_submatrix_(B, C, Y);
 
 P = B * C;
 Q = B;
@@ -81,7 +81,7 @@ for step = 1 : num_iterations
 end
 end
 
-function det_L_submatrix = compute_det_submatrix(B, C, subset)
+function det_L_submatrix = compute_det_submatrix_(B, C, subset)
 B_subset = B(subset, :);
 det_L_submatrix = det(B_subset * C * B_subset');
 end
