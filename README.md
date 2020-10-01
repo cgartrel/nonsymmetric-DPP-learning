@@ -29,6 +29,12 @@ from https://www.instacart.com/datasets/grocery-shopping-2017 and unpack it in t
 $ python main.py --dataset_name instacart --num_sym_embedding_dims 100 --num_nonsym_embedding_dims 100 --alpha 0.01 --max_basket_size 100 --batch_size 400
 ```
 
+To train and evaluate a scalable NDPP using the Million Song dataset, first download the dataset 
+from http://millionsongdataset.com/sites/default/files/challenge/train_triplets.txt.zip and unpack `train_triples.txt` file in the `data` directory. Then run:
+```console
+$ python main.py --dataset_name millionsong --dataset_name millionsong --num_sym_embedding_dims 150 --num_nonsym_embedding_dims 150 --alpha 0.01 --max_basket_size 150 --batch_size 400
+```
+
 For a full list of command-line options:
 ```console
 $ python main.py --help
