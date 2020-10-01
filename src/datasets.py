@@ -234,6 +234,13 @@ class BasketDataset(torch.utils.data.Dataset):
         self.basket_sizes = baskets["basket_size"].tolist()
         # assert self.num_baskets == len(self.order_ids)
         self.num_baskets = len(self.baskets)
+        logging.info("Dropping orders with invalid basket size")
+        dropped_order_ids = [
+            order_id for order_id, baskets in grouped_items.to_dict().items()
+            if len(baskets) > self.max_basket_size
+            or len(baskets) < self.min_basket_size]
+        self.orders = self.orders.drop(
+            self.orders.index[self.orders.order_id.isin(dropped_order_ids)])
         logging.info("Baskets formed")
 
     def _compute_negatives(self):
@@ -346,6 +353,26 @@ def load_basket_ids_dataset(input_file, **kwargs):
             baskets.append(basket)
     return BasketDataset(orders=baskets, **kwargs)
 
+
+def load_millionsong_dataset(input_file, **kwargs):
+    orders = []
+    with open(input_file, "r") as f:
+        for i, line in enumerate(f.readlines()):
+            line_split = line.split('\t')
+            user_id = line_split[0]
+            song_id = line_split[1]
+            orders += [(user_id, song_id)]
+    orders = pd.DataFrame(orders, columns=["order_id", "product_id"])
+    ds = BasketDataset(orders=orders, **kwargs)
+    # product catalog should be replaced with duplicates removed one.
+    all_products = np.unique(np.concatenate(ds.baskets))
+    product_id_mapper = {pid:new_id for new_id, pid in enumerate(all_products)}
+    ds.baskets = [[product_id_mapper[pid] for pid in basket] for basket in ds.baskets]
+    ds.product_catalog = pd.DataFrame(range(len(all_products)), columns=["product_id"])
+    ds.orders.product_id = [product_id_mapper[pid] for pid in ds.orders.product_id.values]
+    return ds
+
+
 def load_dataset(dataset_name, **kwargs):
     """
     Load a dataset by name
@@ -359,6 +386,9 @@ def load_dataset(dataset_name, **kwargs):
         return load_uk_retail_dataset(**kwargs)
     elif dataset_name.lower() == "basket_ids":
         return load_basket_ids_dataset(**kwargs)
+    elif dataset_name.lower() == 'millionsong':
+        kwargs["input_file"] = os.path.join(Header, "data/train_triplets.txt")
+        return load_millionsong_dataset(**kwargs)
     else:
         raise NotImplementedError(dataset_name)
 
