@@ -387,7 +387,7 @@ def parse_cmdline_args():
         '--persisted_model_dir', type=str, default="saved_models",
         help='Path to the dir where model will be/was persisted. ')
     model_parser.add_argument(
-        '--num_val_baskets', type=int, default=100)
+        '--num_val_baskets', type=int, default=300)
     model_parser.add_argument(
         '--num_test_baskets', type=int, default=2000)
 
