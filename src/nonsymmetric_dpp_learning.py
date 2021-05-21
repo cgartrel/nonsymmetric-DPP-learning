@@ -38,13 +38,18 @@ class L2Regularization(torch.autograd.Function):
             V_norm = torch.norm(V, p=2, dim=1)
             V_regularization_term = alpha / 2.0 * lambda_vec.matmul(torch.pow(V_norm, 2))
 
-        # Compute B and C regularization terms, if these components are enabled
-        if B is not None and C is not None:
-            if beta != 0:
+            if torch.norm(V - B) > 1e-10:
                 B_norm = torch.norm(B, p=2, dim=1)
                 B_regularization_term = beta / 2.0 * lambda_vec.matmul(torch.pow(B_norm, 2))
 
-        return V_regularization_term - B_regularization_term
+
+        # # Compute B and C regularization terms, if these components are enabled
+        # if B is not None and C is not None:
+        #     if beta != 0:
+        #         B_norm = torch.norm(B, p=2, dim=1)
+        #         B_regularization_term = beta / 2.0 * lambda_vec.matmul(torch.pow(B_norm, 2))
+
+        return V_regularization_term + B_regularization_term
 
 class NonSymmetricDPP(NonSymmetricDPPPrediction):
     def __init__(self, num_threads=1):
@@ -246,6 +251,12 @@ def eval_model(model, val_data, test_data=None, buckets=None, inference=False,
         logging.info("%sAvg loglik for test at iteration %s: %g" % (
             prefix, iteration, avg_test_log_likelihood))
 
+        avg_val_log_likelihood = model.compute_log_likelihood(
+            model, val_data, alpha_regularization=0, mapped=False)
+        avg_val_log_likelihood = avg_val_log_likelihood.item()
+        logging.info("%sAvg loglik for val at iteration %s: %g" % (
+            prefix, iteration, avg_val_log_likelihood))
+
     # evaluate model
     if not inference and not end and (iteration % eval_freq == 0):
         return locals(), False
@@ -381,6 +392,7 @@ def _do_learning(args):
             optimizer.zero_grad()
 
             # compute loss
+            # import pdb; pdb.set_trace()
             minibatch_log_likelihood = model.compute_log_likelihood(
                 model, minibatch_baskets, mapped=False,
                 alpha_regularization=alpha_train,
@@ -390,6 +402,13 @@ def _do_learning(args):
             (-minibatch_log_likelihood).backward()
             optimizer.step()
 
+            # if model.ortho_v:
+            #     model.orthogonallize_v_embeddings()
+            # if iteration >= 4:
+            #     import scipy.linalg
+            #     V, B, D = model.forward([])
+            #     y = scipy.linalg.subspace_angles(V.detach().numpy(), B.detach().numpy())
+            #     import pdb; pdb.set_trace()
             # monitor step-size
             if val_data is not None:
                 avg_val_log_likelihood = model.compute_log_likelihood(

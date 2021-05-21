@@ -114,3 +114,6 @@ __MACOSX
 meta*
 
 test_*
+results*
+data
+script*

@@ -35,6 +35,11 @@ from http://millionsongdataset.com/sites/default/files/challenge/train_triplets.
 $ python main.py --dataset_name millionsong --num_sym_embedding_dims 150 --num_nonsym_embedding_dims 150 --alpha 0.01 --max_basket_size 150 --batch_size 400
 ```
 
+To train item features of symmetric and skew-symmetric kernel separately, turn on the flag `--noshare_v`. To train NDPP with an orthogonality contraint between features, turn on the 2 flags `--ortho_v --noshare_v`. For example, 
+```console
+$ python main.py --ortho_v --noshare_v --dataset_name instacart --num_sym_embedding_dims 100 --num_nonsym_embedding_dims 100 --alpha 0.01 --max_basket_size 100 --batch_size 800
+```
+
 For a full list of command-line options:
 ```console
 $ python main.py --help

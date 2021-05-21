@@ -40,9 +40,11 @@ class NonSymmetricDPP(NonSymmetricDPPPrediction):
                                                 "num_nonsym_embedding_dims": 10}},
                  disable_gpu=False, epsilon=1e-5,
                  hidden_dims=None, activation="selu", logger=None,
-                 random_state=None, dropout=None, **kwargs):
+                 random_state=None, dropout=None, noshare_v=False, 
+                 ortho_v=False, **kwargs):
         super(NonSymmetricDPP, self).__init__(**kwargs)
         self.product_catalog = product_catalog
+        self.num_items = len(product_catalog)
         self.num_sym_embedding_dims = num_sym_embedding_dims
         self.num_nonsym_embedding_dims = num_nonsym_embedding_dims
         self.features_setup = features_setup
@@ -52,6 +54,9 @@ class NonSymmetricDPP(NonSymmetricDPPPrediction):
         self.activation = activation
         self.random_state = check_random_state(random_state)
         self.dropout = dropout
+        self.noshare_v = noshare_v
+        self.ortho_v = ortho_v
+        assert not (not noshare_v and ortho_v)
         self._compile()
 
     def _compile(self):
@@ -60,12 +65,22 @@ class NonSymmetricDPP(NonSymmetricDPPPrediction):
             self.product_catalog, self.features_setup, self.num_sym_embedding_dims,
             activation=self.activation, hidden_dims=self.hidden_dims,
             dropout=self.dropout)
+        # self.v_embeddings = torch.nn.Embedding(self.num_items, self.num_sym_embedding_dims)
+        # self.v_embeddings.weight.data.normal_(0.0, np.sqrt(0.01))
 
         if (self.num_nonsym_embedding_dims == 0):
             logging.info("num_nonsym_embedding_dims = 0; disabling non-symmetric components")
             self.disable_nonsym_embeddings = True
         else:
-            self.get_b_embeddings = self.get_v_embeddings
+            if not self.noshare_v:
+                self.get_b_embeddings = self.get_v_embeddings
+            else:
+                # self.b_embeddings = torch.nn.Embedding(self.num_items, self.num_nonsym_embedding_dims)
+                # self.b_embeddings.weight.data.normal_(0.0, np.sqrt(0.01))
+                self.get_b_embeddings = ProductCatalogEmbedder(
+                    self.product_catalog, self.features_setup, self.num_nonsym_embedding_dims,
+                    activation=self.activation, hidden_dims=self.hidden_dims,
+                    dropout=self.dropout)
             self.d_params = torch.randn(
                 self.num_nonsym_embedding_dims,
                 self.num_nonsym_embedding_dims, requires_grad=True)
@@ -107,6 +122,12 @@ class NonSymmetricDPP(NonSymmetricDPPPrediction):
             return self.get_v_embeddings().to(self.device), \
                    self.get_b_embeddings().to(self.device)
 
+    # def get_v_embeddings(self):
+    #     return self.v_embeddings.weight
+    
+    # def get_b_embeddings(self):
+    #     return self.b_embeddings.weight
+
     def forward(self, _):
         """
         XXX For backward compat
@@ -114,9 +135,15 @@ class NonSymmetricDPP(NonSymmetricDPPPrediction):
         if self.disable_nonsym_embeddings:
             return self.get_v_embeddings().to(self.device)
         else:
-            return self.get_v_embeddings().to(self.device), \
-                   self.get_b_embeddings().to(self.device), \
-                   self.d_params.to(self.device)
+            if not self.ortho_v:
+                return self.get_v_embeddings().to(self.device), \
+                    self.get_b_embeddings().to(self.device), \
+                    self.d_params.to(self.device)
+            else:
+                V_ = self.get_v_embeddings().to(self.device)
+                B_ = self.get_b_embeddings().to(self.device)
+                return V_ - B_ @ torch.linalg.solve(B_.T @ B_, B_.T @ V_), \
+                    B_, self.d_params.to(self.device)
 
     @staticmethod
     def compute_log_likelihood(model, baskets, alpha_regularization=0.,
@@ -132,6 +159,20 @@ class NonSymmetricDPP(NonSymmetricDPPPrediction):
         embeddings = self.get_v_embeddings().data.numpy()
         tsne_embeddings = tsne.fit_transform(embeddings)
         return tsne_embeddings
+
+    def orthogonallize_v_embeddings(self):
+        assert self.ortho_v and not self.disable_nonsym_embeddings
+        B_ = self.get_b_embeddings().data
+        V_ = self.get_v_embeddings().data
+    #     # import scipy.linalg
+    #     # B_ = B_.detach().numpy()
+    #     # B_ = V_.detach().numpy()
+    #     import pdb; pdb.set_trace()
+        self.get_v_embeddings().data = V_ - B_ @ torch.linalg.solve(B_.T @ B_, B_.T @ V_)
+    #     import scipy.linalg
+    #     B2 = self.get_b_embeddings().data
+    #     V2 = self.get_v_embeddings().data
+    #     y = scipy.linalg.subspace_angles(V2.detach().numpy(), B2.detach().numpy())
 
 
 
@@ -182,8 +223,8 @@ class Args(object):
         self.hidden_dims = self._compute_hidden_dims(self.args)
         self.lr = self._infer_learning_rate(self.args, self.hidden_dims)
         self.alpha = self._compute_alpha(self.args, self.hidden_dims)
-        # self.beta = self._compute_beta(self.args, self.hidden_dims)
-        self.beta = 0 # Beta regularization hyperparam is currently not used
+        self.beta = self._compute_beta(self.args, self.hidden_dims)
+        # self.beta =  # Beta regularization hyperparam is currently not used
         self.disable_eval = self.args_dict.pop("disable_eval")
         self.inference = self.args_dict.pop("inference")
         self.num_bootstraps = self.args_dict.pop("num_bootstraps")
@@ -311,9 +352,18 @@ class Experiment(object):
         print(df)
         pid = os.getpid()
         if store_inference_scores:
+            if not os.path.exists("../results/"):
+                os.makedirs("../results")
+            with open(f"../results/{args.scores_file.split('/')[-1]}", "a+") as f:
+                f.write(str(Results(args.dataset_name, df)) + \
+                    f" | val_ll: {artifacts['avg_val_log_likelihood']}, "+\
+                    f"test_ll: {artifacts['avg_test_log_likelihood']}, "+\
+                    f"num_iterations: {args.num_iterations}, alpha: {args.alpha}, beta: {args.beta}\n")
+            if not os.path.exists("../results_dataframe/"):
+                os.makedirs("../results_dataframe")
             # store scores unto disk
             scores_file = "%s.%i" % (args.scores_file, pid)
-            df.to_pickle(scores_file)
+            df.to_pickle(f"../results_dataframe/{scores_file.split('/')[-1]}")
             logging.info("Inference scores written to %s" % scores_file)
         logging.info("Process %i complete." % pid)
         return df
@@ -327,7 +377,9 @@ class Experiment(object):
                         for param in ["hidden_dims",
                                       "activation",
                                       "disable_gpu",
-                                      "dropout"
+                                      "dropout",
+                                      "noshare_v",
+                                      "ortho_v"
                         ]}
         model_params["num_sym_embedding_dims"] = cls._compute_num_sym_embeddings(args)
         model_params["num_nonsym_embedding_dims"] = cls._compute_num_nonsym_embeddings(args)

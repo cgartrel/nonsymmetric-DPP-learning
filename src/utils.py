@@ -172,16 +172,16 @@ class LogLikelihood(object):
             L_V = V_batch.bmm(V_batch.transpose(1, 2))
         elif (V - B).norm() == 0.0: # Nonsymmetric DPP when B == V
             C_plus_I = C + torch.eye(C.shape[0]).to(model.device)
-            # For bathc mm, matrix C should be expanded with batch size.
+            # For batch mm, matrix C should be expanded with batch size.
             L_V = V_batch.bmm(
                     C_plus_I.unsqueeze(0).expand(len(baskets), *C_plus_I.size())
                 ).bmm(V_batch.transpose(1,2))
         else:
-            C_plus_I = C + torch.eye(C.shape[0]).to(model.device)
             B_batch = pad_sequence([B[basket] for basket in baskets], batch_first=True)
-            L_V = V_batch.bmm(V_batch.transpose(1, 2)) + B_batch.bmm(
-                        C_plus_I.unsqueeze(0).expand(len(baskets), *C_plus_I.size())
-                    ).bmm(V_batch.transpose(1,2))
+            L_V = V_batch.bmm(V_batch.transpose(1, 2)) + \
+                B_batch.bmm(
+                    C.to(model.device).unsqueeze(0).expand(len(baskets), *C.size())
+                ).bmm(B_batch.transpose(1,2))
 
         # Fill ones in the L(i,i) when entry i is padded. This can preserve the
         # determinant value without degeneration.
@@ -289,7 +289,7 @@ def parse_cmdline_args():
     parser.add_argument("--tsne", action="store_true", default=False,
                         help="do t-SNE projections of embeddings")
     parser.add_argument("--scores_file", type=str,
-                        default="nonsymmetric-DPP-eval-scores",
+                        default="eval-scores",
                         help="pickle file where inference scores will be written (pandas dataframe format)")
     parser.add_argument(
         '--num_bootstraps', type=int, default=20,
@@ -323,8 +323,8 @@ def parse_cmdline_args():
         help='maximum size of the baskets to use in experiment')
     parser.add_argument('--alpha', type=float, default=0.1,
                         help='L2 regularization parameter for symmetric component')
-    # parser.add_argument('--beta', type=float, default=0.0,
-    #                     help='L2 regularization parameter for nonsymmetric component')
+    parser.add_argument('--beta', type=float, default=-1,
+                        help='L2 regularization parameter for nonsymmetric component')
     parser.add_argument(
         '--use_metadata', type=str2bool, default="false",
         help='whether to use product meta-data to enrich embeddings')
@@ -390,8 +390,17 @@ def parse_cmdline_args():
         '--num_val_baskets', type=int, default=300)
     model_parser.add_argument(
         '--num_test_baskets', type=int, default=2000)
+    model_parser.add_argument(
+        '--ortho_v', action='store_true',
+        help='whether to orthogonalization of embedding V w.r.t. embedding B')
+    model_parser.add_argument(
+        '--noshare_v', action='store_true',
+        help='whether to use of embedding V w.r.t. embedding B')
 
     args = parser.parse_args()
+
+    if args.noshare_v and args.beta < 0:
+        args.beta = args.alpha
 
     # sanitize some arguments which have ranges
     if args.hogwild and args.num_threads < 2:
@@ -401,7 +410,13 @@ def parse_cmdline_args():
 
     args.product_id_embedding_dim = args.num_sym_embedding_dims
 
-    args.scores_file = Header + args.scores_file
+    args.scores_file = Header + f"{args.dataset_name}-" + args.scores_file
+    assert not (args.ortho_v and not args.noshare_v)
+    if args.noshare_v:
+        args.scores_file = args.scores_file + ('-ortho' if args.ortho_v else '-noshare')
+    args.scores_file = args.scores_file + f"_sdim{args.num_sym_embedding_dims}_nsdim{args.num_nonsym_embedding_dims}_alpha{args.alpha}"
+    if args.noshare_v:
+        args.scores_file += f"_beta{args.beta}"
     args.persisted_model_dir = Header + args.persisted_model_dir
 
     if args.input_file is None and args.dataset_name == "basket_ids":
