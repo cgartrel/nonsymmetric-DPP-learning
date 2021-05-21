@@ -402,13 +402,6 @@ def _do_learning(args):
             (-minibatch_log_likelihood).backward()
             optimizer.step()
 
-            # if model.ortho_v:
-            #     model.orthogonallize_v_embeddings()
-            # if iteration >= 4:
-            #     import scipy.linalg
-            #     V, B, D = model.forward([])
-            #     y = scipy.linalg.subspace_angles(V.detach().numpy(), B.detach().numpy())
-            #     import pdb; pdb.set_trace()
             # monitor step-size
             if val_data is not None:
                 avg_val_log_likelihood = model.compute_log_likelihood(

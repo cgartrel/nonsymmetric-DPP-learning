@@ -65,9 +65,7 @@ class NonSymmetricDPP(NonSymmetricDPPPrediction):
             self.product_catalog, self.features_setup, self.num_sym_embedding_dims,
             activation=self.activation, hidden_dims=self.hidden_dims,
             dropout=self.dropout)
-        # self.v_embeddings = torch.nn.Embedding(self.num_items, self.num_sym_embedding_dims)
-        # self.v_embeddings.weight.data.normal_(0.0, np.sqrt(0.01))
-
+        
         if (self.num_nonsym_embedding_dims == 0):
             logging.info("num_nonsym_embedding_dims = 0; disabling non-symmetric components")
             self.disable_nonsym_embeddings = True
@@ -75,8 +73,6 @@ class NonSymmetricDPP(NonSymmetricDPPPrediction):
             if not self.noshare_v:
                 self.get_b_embeddings = self.get_v_embeddings
             else:
-                # self.b_embeddings = torch.nn.Embedding(self.num_items, self.num_nonsym_embedding_dims)
-                # self.b_embeddings.weight.data.normal_(0.0, np.sqrt(0.01))
                 self.get_b_embeddings = ProductCatalogEmbedder(
                     self.product_catalog, self.features_setup, self.num_nonsym_embedding_dims,
                     activation=self.activation, hidden_dims=self.hidden_dims,
@@ -122,12 +118,6 @@ class NonSymmetricDPP(NonSymmetricDPPPrediction):
             return self.get_v_embeddings().to(self.device), \
                    self.get_b_embeddings().to(self.device)
 
-    # def get_v_embeddings(self):
-    #     return self.v_embeddings.weight
-    
-    # def get_b_embeddings(self):
-    #     return self.b_embeddings.weight
-
     def forward(self, _):
         """
         XXX For backward compat
@@ -159,20 +149,6 @@ class NonSymmetricDPP(NonSymmetricDPPPrediction):
         embeddings = self.get_v_embeddings().data.numpy()
         tsne_embeddings = tsne.fit_transform(embeddings)
         return tsne_embeddings
-
-    def orthogonallize_v_embeddings(self):
-        assert self.ortho_v and not self.disable_nonsym_embeddings
-        B_ = self.get_b_embeddings().data
-        V_ = self.get_v_embeddings().data
-    #     # import scipy.linalg
-    #     # B_ = B_.detach().numpy()
-    #     # B_ = V_.detach().numpy()
-    #     import pdb; pdb.set_trace()
-        self.get_v_embeddings().data = V_ - B_ @ torch.linalg.solve(B_.T @ B_, B_.T @ V_)
-    #     import scipy.linalg
-    #     B2 = self.get_b_embeddings().data
-    #     V2 = self.get_v_embeddings().data
-    #     y = scipy.linalg.subspace_angles(V2.detach().numpy(), B2.detach().numpy())
 
 
 
@@ -465,8 +441,7 @@ class Experiment(object):
         head, _ = os.path.split(persisted_model_path)
         if not os.path.exists(head):
             os.makedirs(head)
-        torch.save(model.state_dict(),
-                   persisted_model_path)
+        torch.save(model.state_dict(), persisted_model_path)
 
     @staticmethod
     def _model_can_be_serialized(args):
