@@ -117,3 +117,4 @@ test_*
 results*
 data
 script*
+*.pth

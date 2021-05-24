@@ -355,6 +355,8 @@ def load_basket_ids_dataset(input_file, **kwargs):
 
 
 def load_millionsong_dataset(input_file, **kwargs):
+    if os.path.exists("./preprocessed_msd.pth"):
+        return torch.load("preprocessed_msd.pth")['ds']
     orders = []
     with open(input_file, "r") as f:
         for i, line in enumerate(f.readlines()):

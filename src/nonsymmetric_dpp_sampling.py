@@ -141,14 +141,14 @@ class NonSymmetricDPPSampler(object):
                 C = C.to(self.device)
 
         if model.disable_nonsym_embeddings:
-            P = V
+            P = V.detach()
         else:
-            P = V.matmul(torch.eye(C.size(0)) + C)
+            P = V.matmul(torch.eye(C.size(0)).to(C.device) + C).detach()
 
         items_observed_set = set(items_observed)
         all_items_not_in_observed = list(all_items_in_catalog_set - items_observed_set)
 
-        Q = V
+        Q = V.detach()
         num_items_in_catalog = len(all_items_in_catalog_set)
         num_items_observed = len(items_observed)
 
@@ -160,13 +160,13 @@ class NonSymmetricDPPSampler(object):
             e1 = torch.matmul(Q, P[observed_item, :].reshape(-1, 1)).reshape(-1)
             e2 = torch.matmul(P, Q[observed_item, :].reshape(-1, 1)).reshape(-1)
             if i > 1:
-                e1 -= torch.matmul(C1[:, :i - 1], C2[observed_item, :i - 1])
-                e2 -= torch.matmul(C2[:, :i - 1], C1[observed_item, :i - 1])
+                e1 -= torch.matmul(C1[:, :i - 1], C2[observed_item, :i - 1]).to(C.device)
+                e2 -= torch.matmul(C2[:, :i - 1], C1[observed_item, :i - 1]).to(C.device)
             e1 /= marginal_gain[observed_item]
             C1[:, i - 1] = e1
             C2[:, i - 1] = e2
 
-            marginal_gain -= e1.mul(e2).reshape(-1)
+            marginal_gain -= e1.mul(e2).reshape(-1).to(C.device)
             if i >= num_items_observed:
                 break
             observed_item = items_observed[i]
