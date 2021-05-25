@@ -2,6 +2,7 @@
 """
 import math
 import copy
+import numpy as np
 import random
 import logging
 
@@ -140,15 +141,23 @@ class NonSymmetricDPPSampler(object):
                 C = D - D.transpose(0, 1)
                 C = C.to(self.device)
 
-        if model.disable_nonsym_embeddings:
-            P = V.detach()
-        else:
-            P = V.matmul(torch.eye(C.size(0)).to(C.device) + C).detach()
+        if torch.norm(V - B) > 0: # this assume that V != B
+            Z = torch.cat((V, B), axis=1)
+            idx = np.arange(V.shape[1], V.shape[1]+B.shape[1])
+            X = torch.eye(Z.shape[1])
+            X[np.ix_(idx,idx)] = C
+            P = (Z @ X).detach()
+            Q = Z.detach()
+        else: 
+            if model.disable_nonsym_embeddings: # when V = B
+                P = V.detach()
+            else:
+                P = V.matmul(torch.eye(C.size(0)).to(C.device) + C).detach()
+            Q = V.detach()
 
         items_observed_set = set(items_observed)
         all_items_not_in_observed = list(all_items_in_catalog_set - items_observed_set)
 
-        Q = V.detach()
         num_items_in_catalog = len(all_items_in_catalog_set)
         num_items_observed = len(items_observed)
 
