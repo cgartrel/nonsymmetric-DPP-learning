@@ -144,7 +144,7 @@ class NonSymmetricDPPSampler(object):
         if torch.norm(V - B) > 0: # this assume that V != B
             Z = torch.cat((V, B), axis=1)
             idx = np.arange(V.shape[1], V.shape[1]+B.shape[1])
-            X = torch.eye(Z.shape[1]).to(D.device)
+            X = torch.eye(Z.shape[1]).to(C.device)
             X[np.ix_(idx,idx)] = C
             P = (Z @ X).detach()
             Q = Z.detach()
