@@ -5,7 +5,7 @@ Nonsymmetric DPP learning
 import os
 # import random
 import logging
-# import time
+import time
 from math import ceil
 
 import numpy as np
@@ -376,6 +376,7 @@ def _do_learning(args):
     abort = False
     epoch = 0
     curr_auc = None
+    tic = time.time()
     while not abort and iteration < num_iterations:
         logging.info("Epoch #%02i" % (epoch + 1))
         epoch += 1
@@ -410,7 +411,8 @@ def _do_learning(args):
 
                 loglik_history.append(avg_val_log_likelihood)
                 logging.info("%sAvg loglik for val at iteration %s: %g" % (
-                    prefix, iteration, avg_val_log_likelihood))
+                    prefix, iteration, avg_val_log_likelihood), +\
+                    f"| time: {time.time():.3f} s")
                 scheduler.step(float(avg_val_log_likelihood))
 
             # evaluate model
