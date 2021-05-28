@@ -410,9 +410,8 @@ def _do_learning(args):
                     beta_regularization=0).item()
 
                 loglik_history.append(avg_val_log_likelihood)
-                logging.info("%sAvg loglik for val at iteration %s: %g" % (
-                    prefix, iteration, avg_val_log_likelihood), +\
-                    f"| time: {time.time():.3f} s")
+                logging.info("%sAvg loglik for val at iteration %s: %g | %f" % (
+                    prefix, iteration, avg_val_log_likelihood, time.time()-tic))
                 scheduler.step(float(avg_val_log_likelihood))
 
             # evaluate model
