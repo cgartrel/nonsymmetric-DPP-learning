@@ -40,6 +40,7 @@ class LogLikelihood(object):
     @staticmethod
     def compute_log_likelihood(model, baskets, alpha_regularization=0.,
                                beta_regularization=0.,
+                               gamma_regularization=0.,
                                reduce=True, checks=False, mapped=True):
         """
         Computes nonsymmetric low-rank DPP log-likelihood
@@ -170,7 +171,7 @@ class LogLikelihood(object):
         # Batch matrix-multiplication of all baskets
         if model.disable_nonsym_embeddings:
             L_V = V_batch.bmm(V_batch.transpose(1, 2))
-        elif (V - B).norm() == 0.0: # Nonsymmetric DPP when B == V
+        elif (V.detach().cpu() - B.detach().cpu()).norm() == 0.0: # Nonsymmetric DPP when B == V
             C_plus_I = C + torch.eye(C.shape[0]).to(model.device)
             # For batch mm, matrix C should be expanded with batch size.
             L_V = V_batch.bmm(
@@ -325,6 +326,8 @@ def parse_cmdline_args():
                         help='L2 regularization parameter for symmetric component')
     parser.add_argument('--beta', type=float, default=-1,
                         help='L2 regularization parameter for nonsymmetric component')
+    parser.add_argument('--gamma', type=float, default=0.0,
+                        help='L2 regularization parameter for skew-symmetric component')
     parser.add_argument(
         '--use_metadata', type=str2bool, default="false",
         help='whether to use product meta-data to enrich embeddings')
@@ -414,9 +417,15 @@ def parse_cmdline_args():
     assert not (args.ortho_v and not args.noshare_v)
     if args.noshare_v:
         args.scores_file = args.scores_file + ('-ortho' if args.ortho_v else '-noshare')
-    args.scores_file = args.scores_file + f"_sdim{args.num_sym_embedding_dims}_nsdim{args.num_nonsym_embedding_dims}_alpha{args.alpha}"
+    args.scores_file = args.scores_file + f"_sdim{args.num_sym_embedding_dims}"
+    if args.num_nonsym_embedding_dims > 0:
+        args.scores_file += f"_nsdim{args.num_nonsym_embedding_dims}"
+    if args.alpha > 0:
+        args.scores_file += f"_alpha{args.alpha}"
     if args.noshare_v:
         args.scores_file += f"_beta{args.beta}"
+    if args.gamma > 0:
+        args.scores_file += f"_gam{args.gamma}"
     args.persisted_model_dir = Header + args.persisted_model_dir
 
     if args.input_file is None and args.dataset_name == "basket_ids":
