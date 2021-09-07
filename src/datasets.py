@@ -342,6 +342,59 @@ def load_uk_retail_dataset(input_file, **kwargs):
     return BasketDataset(orders=orders, **kwargs)
 
 
+def load_recipe_dataset(input_file, **kwargs):
+    logging.info('loading recipe dataset')
+    """
+    Load recipe dataset
+    """
+    baskets = []
+    with open(input_file, "r") as f:
+        for i, line in enumerate(f.readlines()):
+            if i == 0:
+                continue
+            basket = [int(a) for a in line.strip("\n").split("\"")[-2].replace("[","").replace("]","").split(",")]
+            baskets.append(basket)
+    return BasketDataset(orders=baskets, **kwargs)
+
+
+def load_steam_dataset(input_file, **kwargs):
+    logging.info('loading Steam games reviews dataset')
+    """
+    Load Steam games dataset
+    """
+    baskets_user_to_id = {}
+    with open(input_file, "r") as f:
+        for line in f.readlines():
+            user_name = line.split("username")[-1].split(",")[0].replace(":", "").replace("u\'", "").replace(" ", "").replace("\'", '')
+            item_id = int(line.split("product_id")[-1].split(",")[0].replace(":", "").replace("u\'", "").replace(" ", "").replace("\'", ''))
+
+            if user_name in baskets_user_to_id.keys():
+                baskets_user_to_id[user_name].append(item_id)
+            else:
+                baskets_user_to_id[user_name] = [item_id]
+    baskets = list(baskets_user_to_id.values())
+    return BasketDataset(orders=baskets, **kwargs)
+
+
+def load_book_dataset(input_file, **kwargs):
+    logging.info('loading Goodreads Book reviews dataset')
+    """
+    Load Goodreads book reviews dataset
+    """
+    baskets_user_to_id = {}
+    with open(input_file, "r") as f:
+        for line in f.readlines():
+            user_name = line.split("user_id")[-1].split(",")[0].replace(":", "").replace(" ", "").replace("\"", "")
+            item_id = int(line.split("book_id")[-1].split(",")[0].replace(":", "").replace(" ", "").replace("\"", ""))
+
+            if user_name in baskets_user_to_id.keys():
+                baskets_user_to_id[user_name].append(item_id)
+            else:
+                baskets_user_to_id[user_name] = [item_id]
+    baskets = list(baskets_user_to_id.values())
+    return BasketDataset(orders=baskets, **kwargs)
+
+
 def load_basket_ids_dataset(input_file, **kwargs):
     baskets = []
     with open(input_file) as f:
@@ -386,6 +439,12 @@ def load_dataset(dataset_name, **kwargs):
     elif dataset_name.lower() == "uk":
         kwargs["input_file"] = Header + "data/UK-retail-joined.csv"
         return load_uk_retail_dataset(**kwargs)
+    elif dataset_name.lower() == "recipe":
+        return load_recipe_dataset(**kwargs)
+    elif dataset_name.lower() == "steam":
+        return load_steam_dataset(**kwargs)
+    elif dataset_name.lower() == "book":
+        return load_book_dataset(**kwargs)
     elif dataset_name.lower() == "basket_ids":
         return load_basket_ids_dataset(**kwargs)
     elif dataset_name.lower() == 'millionsong':
