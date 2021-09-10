@@ -480,6 +480,7 @@ class Experiment(object):
                                   "num_iterations": args.num_iterations,
                                   "alpha_train": arguments.alpha,
                                   "beta_train": arguments.beta,
+                                  "gamma_train": arguments.gamma,
                                   "disable_eval": arguments.disable_eval,
                                   "inference": arguments.inference,
                                   "learning_rate": arguments.lr,
