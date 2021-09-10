@@ -77,9 +77,9 @@ class NonSymmetricDPP(NonSymmetricDPPPrediction):
                     self.product_catalog, self.features_setup, self.num_nonsym_embedding_dims,
                     activation=self.activation, hidden_dims=self.hidden_dims,
                     dropout=self.dropout)
-            self.d_params = torch.randn(
+            self.d_params = torch.nn.Parameter(torch.randn(
                 self.num_nonsym_embedding_dims,
-                self.num_nonsym_embedding_dims, requires_grad=True)
+                self.num_nonsym_embedding_dims), requires_grad=True)
 
         # prepare L2 regularizer
         self.reg = L2Regularization().regularization
@@ -137,10 +137,12 @@ class NonSymmetricDPP(NonSymmetricDPPPrediction):
 
     @staticmethod
     def compute_log_likelihood(model, baskets, alpha_regularization=0.,
-                               beta_regularization=0.,
+                               beta_regularization=0., gamma_regularization=0.,
                                reduce=True, checks=False, mapped=True):
-        return compute_log_likelihood(model, baskets, alpha_regularization=alpha_regularization,
+        return compute_log_likelihood(model, baskets,
+                           alpha_regularization=alpha_regularization,
                            beta_regularization=beta_regularization,
+                           gamma_regularization=gamma_regularization,
                            reduce=reduce, checks=checks, mapped=mapped)
 
     def get_tsne_embeddings(self, n_components=2, **kwargs):
@@ -200,6 +202,7 @@ class Args(object):
         self.lr = self._infer_learning_rate(self.args, self.hidden_dims)
         self.alpha = self._compute_alpha(self.args, self.hidden_dims)
         self.beta = self._compute_beta(self.args, self.hidden_dims)
+        self.gamma = self.args.gamma
         # self.beta =  # Beta regularization hyperparam is currently not used
         self.disable_eval = self.args_dict.pop("disable_eval")
         self.inference = self.args_dict.pop("inference")
