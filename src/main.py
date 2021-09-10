@@ -99,14 +99,14 @@ class NonSymmetricDPP(NonSymmetricDPPPrediction):
             np.arange(self.item_catalog_size)).to(self.device)
 
         # compute item counts
-        self.lambda_vec = []
-        self.item_counts = self.product_catalog.product_id.value_counts().to_dict()
-        for item_id, count in self.item_counts.items():
-            if item_id in self.item_counts:
-                self.lambda_vec.append(1. / count)
-            else:
-                self.lambda_vec.append(1.)
-        self.lambda_vec = torch.Tensor(self.lambda_vec).to(self.device)
+        # self.lambda_vec = []
+        # self.item_counts = self.product_catalog.product_id.value_counts().to_dict()
+        # for item_id, count in self.item_counts.items():
+        #     if item_id in self.item_counts:
+        #         self.lambda_vec.append(1. / count)
+        #     else:
+        #         self.lambda_vec.append(1.)
+        # self.lambda_vec = torch.Tensor(self.lambda_vec).to(self.device)
 
     def embeddings(self):
         """
