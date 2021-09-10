@@ -152,6 +152,17 @@ class NonSymmetricDPP(NonSymmetricDPPPrediction):
         tsne_embeddings = tsne.fit_transform(embeddings)
         return tsne_embeddings
 
+    def compute_lambda_vec(self, all_items_with_replacement):
+        all_items_with_replacement = torch.from_numpy(all_items_with_replacement)
+        self.item_counts = torch.bincount(all_items_with_replacement)
+        self.lambda_vec = []
+        for count in self.item_counts:
+            if count == 0:
+                self.lambda_vec.append(1.)
+            else:
+                self.lambda_vec.append(1. / count)
+        self.lambda_vec = torch.Tensor(self.lambda_vec).to(self.device)
+
 
 
 def prepare_data(args, random_state=None, num_val_baskets=None,
@@ -411,6 +422,7 @@ class Experiment(object):
             # train model
             if model.is_baseline:
                 return cls._learn_baseline_model(arguments, model, dataset)
+            model.compute_lambda_vec(np.concatenate(dataset.train_data.dataset.baskets))
             ofile = cls._learn_dpp_model(arguments, model,
                                          dataset.train_data,
                                          dataset.val_data,
