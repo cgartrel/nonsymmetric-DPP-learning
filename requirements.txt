@@ -1,7 +1,7 @@
 absl-py==0.8.0
 future==0.17.1
 grpcio==1.23.0
-joblib==0.13.2
+joblib==1.2.0
 logging-tree==1.8
 Markdown==3.1.1
 numpy==1.16.2
